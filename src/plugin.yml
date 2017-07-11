@@ -1,0 +1,7 @@
+main: me.alexandreh.fr.particlesnaheul.Main
+name: Particles NaheulCraft
+version: 1.0.0
+description: Plugin par Thris
+commands:
+    partspe:
+     description: Spawn des particules
