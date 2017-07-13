@@ -1,5 +1,9 @@
 package me.alexandreh.fr.particlesnaheul;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Effect;
@@ -10,6 +14,9 @@ import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.craftbukkit.v1_11_R1.command.CraftConsoleCommandSender;
+import org.bukkit.craftbukkit.v1_11_R1.command.CraftRemoteConsoleCommandSender;
+import org.bukkit.craftbukkit.v1_11_R1.entity.CraftLivingEntity;
 import org.bukkit.craftbukkit.v1_11_R1.entity.CraftPlayer;
 import org.bukkit.craftbukkit.v1_11_R1.entity.CraftSnowball;
 import org.bukkit.entity.LivingEntity;
@@ -28,72 +35,95 @@ public class Particles implements CommandExecutor, Listener{
 
 	Plugin plugin = Main.pl;
 	static BukkitScheduler scheduler = Bukkit.getScheduler();
-	int task;
 	Location previous_loc;
 	static String damage_1;
 	static String damage_2;
 	static float damage;
+	static int task2;
+	static Snowball sb;
+	
+    private Map<UUID, Integer> runnableMap = new HashMap<UUID, Integer>();
 	
 	@Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-
-		Player p = (Player) sender; 
 		
-		if(cmd.getName().equalsIgnoreCase("partspe")){
+		if(cmd.getName().equalsIgnoreCase("partspec")){
 			
-			if(p.isOp()){
-			if(args.length < 5){
-				p.sendMessage(ChatColor.GRAY + "[" + ChatColor.AQUA + "NaheulCraft" + ChatColor.GRAY + "] "+ ChatColor.RED +  "Il manque des arguments, utilisation de la commande: /partspe <type> <vitesse> <nombre de particules> <dommage> <force>" );
-			}
-			if(args.length == 5){
-			
-			String effect_string = args[0];
-			Particle particle = Converter.VanillatoBukkit(effect_string);
-			int speed = Integer.parseInt(args[1]);
-			int volume = Integer.parseInt(args[2]);
-			damage_1 = args[3];
-			damage_2 = args[3].replace("+", "");
-			damage = Float.parseFloat(args[3].replace("-", ""));
-			float power = Float.parseFloat(args[4]);
-			
-			Snowball sb = p.launchProjectile(Snowball.class);
-			sb.setVelocity(p.getLocation().getDirection().multiply(speed));
-			
+			if(sender instanceof Player){
+				
+				sender.sendMessage(ChatColor.RED + "Utilise /partspe pour les joueurs !");
+				
+			}else{
 
-            for (Player pl : Bukkit.getOnlinePlayers()) {
-                ((CraftPlayer)pl).getHandle().playerConnection.sendPacket(new PacketPlayOutEntityDestroy(((CraftSnowball) sb).getHandle().getId()));
-            }
-            
-			task = scheduler.scheduleSyncRepeatingTask(plugin, new Runnable(){
-			@Override
-			public void run(){
+				if(args.length < 6){
+					sender.sendMessage(ChatColor.GRAY + "[" + ChatColor.AQUA + "NaheulCraft" + ChatColor.GRAY + "] "+ ChatColor.RED +  "Il manque des arguments, utilisation de la commande: /partspec <joueur> <type> <vitesse> <nombre de particules> <dommage> <force>" );
+				}
+				if(args.length == 6){
 				
-				Bukkit.getWorld(sb.getWorld().getName()).spawnParticle(particle, sb.getLocation().getX(), sb.getLocation().getY(), sb.getLocation().getZ(), volume, 0, 0, 0, power);
+				String player_name = args[0];
+				Player p = Bukkit.getPlayer(player_name);
+				String effect_string = args[1];
+				Particle particle = Converter.VanillatoBukkit(effect_string);
+				int speed = Integer.parseInt(args[2]);
+				int volume = Integer.parseInt(args[3]);
+				damage_1 = args[4];
+				damage_2 = args[4].replace("+", "");
+				damage = Float.parseFloat(args[4].replace("-", ""));
+				float power = Float.parseFloat(args[5]);
+				
+				Snowball sb = p.launchProjectile(Snowball.class);
+				sb.setVelocity(p.getLocation().getDirection().multiply(speed));
+				   
+				for (Player pl : Bukkit.getOnlinePlayers()) {
+					((CraftPlayer)pl).getHandle().playerConnection.sendPacket(new PacketPlayOutEntityDestroy(((CraftSnowball) sb).getHandle().getId()));
+		        }
+				
+		        if(!runnableMap.containsKey(p.getUniqueId())) {
+		            
+		        	
+		        	int taskID = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+		 
+		                @Override
+		                public void run() {
+		                  
+		                	Bukkit.getWorld(sb.getWorld().getName()).spawnParticle(particle, sb.getLocation().getX(), sb.getLocation().getY(), sb.getLocation().getZ(), volume, 0, 0, 0, power);
+		                			                	
+		                	if(sb.isDead()){
+		                		cancelRunnable(p);
+		                	}
+		                	
+		                }
+		 
+		            }, 0, 1);
+		        	runnableMap.put(p.getUniqueId(), taskID);
+		        }
 				
 				
-				if(sb.isDead()){
-					scheduler.cancelTask(task);
+				}
+				if(args.length > 6){
+					sender.sendMessage(ChatColor.GRAY + "[" + ChatColor.AQUA + "NaheulCraft" + ChatColor.GRAY + "] " + ChatColor.RED + "Il y a trop d'arguments, utilisation de la commande: /partspec <joueur> <type> <vitesse> <nombre de particules> <dommage> <force>" );
 				}
 				
-					
-			}
-			}, 0, 1);
-			
-			}
-			if(args.length > 5){
-				p.sendMessage(ChatColor.GRAY + "[" + ChatColor.AQUA + "NaheulCraft" + ChatColor.GRAY + "] " + ChatColor.RED + "Il y a trop d'arguments, utilisation de la commande: /partspe <type> <vitesse> <nombre de particules> <dommage> <force>" );
 			}
 		}
-		}
-		return false;
+		
+	return false;
+		
 	
 	}
 	
+	public void cancelRunnable(Player player) {
+        if(runnableMap.containsKey(player.getUniqueId())) {
+            Bukkit.getScheduler().cancelTask(runnableMap.get(player.getUniqueId()));
+            runnableMap.remove(player.getUniqueId());
+        }
+    }
+	
 	@SuppressWarnings("deprecation")
 	@EventHandler
-	public static void onHit(ProjectileHitEvent e){
+	public void onHit(ProjectileHitEvent e){
 		if(e.getEntity() instanceof Snowball){
-			if(e.getEntity().getShooter() instanceof Player){
+			if(e.getEntity().getShooter() instanceof Player){			   
 			if(e.getHitEntity() != null && e.getHitEntity() instanceof LivingEntity){
 				if(Converter.DamageConvert(damage_1) == "-"){
 				((LivingEntity)e.getHitEntity()).damage(damage);

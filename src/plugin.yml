@@ -5,3 +5,5 @@ description: Plugin par Thris
 commands:
     partspe:
      description: Spawn des particules
+    partspec:
+     description: Spawn des particules via console

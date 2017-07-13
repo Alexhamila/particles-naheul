@@ -32,8 +32,8 @@ public class Main extends JavaPlugin {
 		}
 		
 		public void registerCommands(){
-			getCommand("partspe").setExecutor(new Particles());
-			
+			getCommand("partspe").setExecutor(new ParticlesDebug());
+			getCommand("partspec").setExecutor(new Particles());
 			
 		}
 		public static Main instance;
